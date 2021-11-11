@@ -11,7 +11,6 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -59,35 +58,30 @@ func main() {
 			}
 			defer conn.Release()
 
-			if err := conn.BeginFunc(ctx, func(t pgx.Tx) error {
-				log.Printf("inserting...")
+			log.Printf("inserting...")
 
-				count := 100_000_000 / len(data)
+			count := 100_000_000 / len(data)
 
-				var sql strings.Builder
-				sql.WriteString("INSERT INTO pgxtest (val) VALUES")
+			var sql strings.Builder
+			sql.WriteString("INSERT INTO pgxtest (val) VALUES")
 
-				params := make([]interface{}, 0, count)
-				for i := 1; i <= count; i++ {
-					if i > 1 {
-						sql.WriteString(", ")
-					}
-					sql.WriteString(fmt.Sprintf("($%d)", i))
-					params = append(params, data)
+			params := make([]interface{}, 0, count)
+			for i := 1; i <= count; i++ {
+				if i > 1 {
+					sql.WriteString(", ")
 				}
+				sql.WriteString(fmt.Sprintf("($%d)", i))
+				params = append(params, data)
+			}
 
-				cmdTag, err := conn.Exec(ctx, sql.String(), params...)
-				if err != nil {
-					log.Fatal(err)
-				}
-				log.Printf("inserted %d", cmdTag.RowsAffected())
-
-				sql.Reset()
-				params = nil
-				return nil
-			}); err != nil {
+			cmdTag, err := conn.Exec(ctx, sql.String(), params...)
+			if err != nil {
 				log.Fatal(err)
 			}
+			log.Printf("inserted %d", cmdTag.RowsAffected())
+
+			sql.Reset()
+			params = nil
 		}()
 	}
 	wg.Wait()
